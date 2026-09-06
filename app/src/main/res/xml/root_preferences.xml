@@ -1,0 +1,29 @@
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory app:title="Security">
+
+        <SwitchPreferenceCompat
+            app:key="use_biometric"
+            app:title="Biometric Lock"
+            app:summary="Use fingerprint or face ID to open app"
+            app:defaultValue="false" />
+
+        <SwitchPreferenceCompat
+            app:key="shred_after_encrypt"
+            app:title="Auto-Delete Original"
+            app:summary="Permanently delete original file after encryption"
+            app:defaultValue="true" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="App Appearance">
+
+        <SwitchPreferenceCompat
+            app:key="stealth_mode"
+            app:title="Stealth Mode"
+            app:summary="Disguise app as a Calculator"
+            app:defaultValue="false" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>

@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">CryptaFile</string>
+    <string name="settings">Ajustes</string>
+    <string name="security">Seguridad y Autenticación</string>
+    <string name="app_theme">Tema de la aplicación</string>
+    <string name="language">Idioma</string>
+    <string name="export_vault">Exportar Bóveda</string>
+    <string name="select_theme">Seleccionar tema</string>
+</resources>

@@ -1,0 +1,37 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="100dp"
+    android:height="100dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <!-- Shield/Vault Background -->
+    <path
+        android:fillColor="#6750A4"
+        android:pathData="M50,5L15,20V45C15,65 30,85 50,95C70,85 85,65 85,45V20L50,5Z" />
+
+    <!-- File Outline -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M35,30H55L65,40V70H35V30Z" />
+
+    <!-- File Fold -->
+    <path
+        android:fillColor="#D1C4E9"
+        android:pathData="M55,30V40H65L55,30Z" />
+
+    <!-- Lock Body -->
+    <path
+        android:fillColor="#03DAC6"
+        android:pathData="M42,50H58V62C58,63.1 57.1,64 56,64H44C42.9,64 42,63.1 42,62V50Z" />
+
+    <!-- Lock Shackle -->
+    <path
+        android:strokeColor="#03DAC6"
+        android:strokeWidth="2"
+        android:pathData="M45,50V46C45,43.2 47.2,41 50,41C52.8,41 55,43.2 55,46V50" />
+
+    <!-- Keyhole -->
+    <path
+        android:fillColor="#1C1B1F"
+        android:pathData="M50,54A2,2 0,1 0,50 58A2,2 0,1 0,50 54Z" />
+</vector>

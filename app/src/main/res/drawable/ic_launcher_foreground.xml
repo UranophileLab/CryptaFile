@@ -1,0 +1,29 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <group
+        android:translateX="4"
+        android:translateY="4">
+        <!-- Shield Background -->
+        <path
+            android:fillColor="#6750A4"
+            android:pathData="M50,10L20,23V48C20,68 35,88 50,98C65,88 80,68 80,48V23L50,10Z" />
+
+        <!-- File Icon -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M38,35H54L62,43V68H38V35Z" />
+
+        <!-- Lock -->
+        <path
+            android:fillColor="#03DAC6"
+            android:pathData="M44,52H56V62C56,63.1 55.1,64 54,64H46C44.9,64 44,63.1 44,62V52Z" />
+        <path
+            android:strokeColor="#03DAC6"
+            android:strokeWidth="2"
+            android:pathData="M46,52V49C46,46.8 47.8,45 50,45C52.2,45 54,46.8 54,49V52" />
+    </group>
+</vector>

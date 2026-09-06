@@ -1,0 +1,38 @@
+<resources>
+    <string name="app_name">CryptaFile</string>
+    <string name="select_file">Select File</string>
+    <string name="encrypt">Encrypt</string>
+    <string name="decrypt">Decrypt</string>
+    <string name="passphrase_hint">Password or Recovery Code</string>
+    <string name="status_ready">Ready</string>
+    <string name="error_no_file">Please select a file first</string>
+    <string name="error_no_pass">Passphrase cannot be empty</string>
+    <string name="recent_files">Recent Files</string>
+    <string name="empty_state_title">Your vault is empty</string>
+    <string name="empty_state_desc">Start by encrypting your first file.</string>
+    <string name="action_required">Action Required</string>
+    <string name="choose_action">Choose an action for this file</string>
+    <string name="cancel">Cancel</string>
+
+    <!-- Settings -->
+    <string name="settings">Settings</string>
+    <string name="security">Security &amp; Authentication</string>
+    <string name="app_lock">App Lock</string>
+    <string name="biometric_lock">Biometric Lock</string>
+    <string name="pin_lock">PIN Lock</string>
+    <string name="change_password">Change Master Password</string>
+    <string name="stealth_mode">Stealth Mode (App Disguise)</string>
+    <string name="decoy_vault">Decoy Vault</string>
+    <string name="panic_gesture">Panic Gesture</string>
+    <string name="trust_management">Trust Management</string>
+    <string name="appearance">Appearance &amp; Display</string>
+    <string name="app_theme">App Theme</string>
+    <string name="language">Language</string>
+    <string name="view_mode">Vault View Mode</string>
+    <string name="export_vault">Export Vault</string>
+    <string name="gallery">Gallery</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_system">System Default</string>
+    <string name="select_theme">Select Theme</string>
+</resources>
