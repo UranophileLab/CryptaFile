@@ -44,17 +44,27 @@ class SecureViewerActivity : AppCompatActivity() {
 
             binding.progressViewer.visibility = View.GONE
             result.onSuccess { tempFile ->
-                val bitmap = BitmapFactory.decodeFile(tempFile.absolutePath)
-                if (bitmap != null) {
-                    binding.imgViewer.setImageBitmap(bitmap)
-                } else {
-                    Toast.makeText(this@SecureViewerActivity, "Format not supported", Toast.LENGTH_SHORT).show()
+                try {
+                    val bitmap = BitmapFactory.decodeFile(tempFile.absolutePath)
+                    if (bitmap != null) {
+                        binding.imgViewer.setImageBitmap(bitmap)
+                    } else {
+                        Toast.makeText(this@SecureViewerActivity, "Format not supported", Toast.LENGTH_SHORT).show()
+                    }
+                } finally {
+                    if (tempFile.exists()) tempFile.delete()
                 }
-                tempFile.deleteOnExit()
             }.onFailure { 
                 showError(it.message ?: "Error")
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        binding.imgViewer.setImageBitmap(null)
+        // Note: binding itself will be cleared by GC when activity is destroyed, 
+        // but for safety in some leak detection tools we could set it to null if it were nullable.
     }
 
     private fun showError(msg: String) {

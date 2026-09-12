@@ -4,6 +4,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.UranophileLab.cryptafile.CryptFile
+import dev.UranophileLab.cryptafile.PendingFile
 import dev.UranophileLab.cryptafile.data.VaultRepository
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -28,15 +29,15 @@ class MainViewModel(private val repository: VaultRepository) : ViewModel() {
         }
     }
 
-    fun executeBatchAction(paths: List<String>, passphrase: String, isEncrypt: Boolean) {
+    fun executeBatchAction(files: List<PendingFile>, passphrase: String, isEncrypt: Boolean) {
         viewModelScope.launch {
             var successCount = 0
-            paths.forEach { path ->
-                if (repository.processFile(path, passphrase, isEncrypt)) {
+            files.forEach { file ->
+                if (repository.processFile(file.path, passphrase, isEncrypt, file.originalUri)) {
                     successCount++
                 }
             }
-            _uiEvent.emit(UiEvent.ShowToast("Processed $successCount/${paths.size} files"))
+            _uiEvent.emit(UiEvent.ShowToast("Processed $successCount/${files.size} files"))
             loadVaultFiles()
         }
     }
