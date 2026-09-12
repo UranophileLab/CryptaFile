@@ -12,19 +12,26 @@ object SecurityManager {
     private const val KEY_MASTER_PASSWORD = "saved_master_password"
     private const val KEY_RECOVERY_HASH = "recovery_code_hash"
 
+    private var cachedPrefs: android.content.SharedPreferences? = null
+
     // 1. Initialize EncryptedSharedPreferences
+    @Synchronized
     private fun getEncryptedPrefs(context: Context): android.content.SharedPreferences {
+        cachedPrefs?.let { return it }
+
         val masterKey = MasterKey.Builder(context)
             .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
             .build()
 
-        return EncryptedSharedPreferences.create(
+        val prefs = EncryptedSharedPreferences.create(
             context,
             PREFS_NAME,
             masterKey,
             EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
         )
+        cachedPrefs = prefs
+        return prefs
     }
 
     // 2. Hash the recovery code using SHA-256 (Never store raw recovery codes)

@@ -42,7 +42,7 @@ import dev.UranophileLab.cryptafile.ui.theme.CryptaFileTheme
 
 class MainActivity : AppCompatActivity(), SensorEventListener {
 
-    private var pendingFiles by mutableStateOf<List<String>>(emptyList())
+    private var pendingFiles by mutableStateOf<List<PendingFile>>(emptyList())
     private var isLocked by mutableStateOf(false)
     private var isFirstLaunch by mutableStateOf(false)
     private var showRecoveryDialog by mutableStateOf(false)
@@ -54,7 +54,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     ) { result ->
         if (result.resultCode == RESULT_OK) {
             val paths = result.data?.getStringArrayListExtra("selected_paths")
-            paths?.let { pendingFiles = it }
+            paths?.let { list -> pendingFiles = list.map { PendingFile(it) } }
         }
     }
 
@@ -165,11 +165,12 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                             onSettingsClick = {
                                 startActivity(Intent(this@MainActivity, dev.UranophileLab.cryptafile.ui.settings.SettingsActivity::class.java))
                             },
-                            pendingFiles = pendingFiles,
+                            pendingFiles = pendingFiles.map { it.path },
                             onActionSelected = { paths, pass, isEncrypt ->
                                 val resolvedPass = SecurityManager.resolvePassphrase(applicationContext, pass)
                                 if (resolvedPass != null) {
-                                    viewModel.executeBatchAction(paths, resolvedPass, isEncrypt)
+                                    val filesToProcess = pendingFiles.filter { it.path in paths }
+                                    viewModel.executeBatchAction(filesToProcess, resolvedPass, isEncrypt)
                                 } else {
                                     Toast.makeText(this@MainActivity, "Invalid Password or Recovery Code", Toast.LENGTH_SHORT).show()
                                 }
@@ -233,10 +234,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         accelerometer?.let {
             sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL)
         }
-        
-        // Refresh vault files in case trust status changed in Settings
-        val viewModel = androidx.lifecycle.ViewModelProvider(this, MainViewModelFactory(VaultRepository(applicationContext)))[MainViewModel::class.java]
-        viewModel.loadVaultFiles()
     }
 
     override fun onPause() {
@@ -265,25 +262,25 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     private fun handlePickedPhotos(uris: List<Uri>) {
         lifecycleScope.launch {
-            val paths = withContext(Dispatchers.IO) {
+            val pendingList = withContext(Dispatchers.IO) {
                 uris.mapNotNull { uri ->
                     try {
-                        val inputStream = contentResolver.openInputStream(uri)
-                        val fileName = getFileName(uri) ?: "gallery_photo_${System.currentTimeMillis()}.jpg"
-                        val tempFile = File(cacheDir, fileName)
-                        val outputStream = FileOutputStream(tempFile)
-                        inputStream?.copyTo(outputStream)
-                        inputStream?.close()
-                        outputStream.close()
-                        tempFile.absolutePath
+                        contentResolver.openInputStream(uri)?.use { inputStream ->
+                            val fileName = getFileName(uri) ?: "gallery_photo_${System.currentTimeMillis()}.jpg"
+                            val tempFile = File(cacheDir, fileName)
+                            FileOutputStream(tempFile).use { outputStream ->
+                                inputStream.copyTo(outputStream)
+                            }
+                            PendingFile(tempFile.absolutePath, uri)
+                        }
                     } catch (e: Exception) {
                         e.printStackTrace()
                         null
                     }
                 }
             }
-            if (paths.isNotEmpty()) {
-                pendingFiles = paths
+            if (pendingList.isNotEmpty()) {
+                pendingFiles = pendingList
             }
         }
     }

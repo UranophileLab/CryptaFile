@@ -1,7 +1,11 @@
 package dev.UranophileLab.cryptafile.data
 
 import android.content.Context
+import android.media.MediaScannerConnection
+import android.net.Uri
 import android.os.Environment
+import android.provider.MediaStore
+import android.util.Log
 import dev.UranophileLab.cryptafile.CryptFile
 import dev.UranophileLab.cryptafile.NativeLib
 import dev.UranophileLab.cryptafile.security.KeyManager
@@ -15,7 +19,7 @@ import java.util.*
 
 class VaultRepository(private val context: Context) {
 
-    suspend fun processFile(path: String, passphrase: String, isEncrypt: Boolean): Boolean = withContext(Dispatchers.IO) {
+    suspend fun processFile(path: String, passphrase: String, isEncrypt: Boolean, sourceUri: Uri? = null): Boolean = withContext(Dispatchers.IO) {
         val inputFile = File(path)
         if (!inputFile.exists()) return@withContext false
 
@@ -26,19 +30,90 @@ class VaultRepository(private val context: Context) {
         val success = if (isEncrypt) {
             val salt = KeyManager.generateSalt()
             val key = KeyManager.deriveKey(passphrase, salt)
-            NativeLib.encryptFileNative(inputFile.absolutePath, outputFile.absolutePath, key, salt)
+            Log.d("VaultRepository", "Encrypting: ${inputFile.absolutePath} to ${outputFile.absolutePath}")
+            val res = NativeLib.encryptFileNative(inputFile.absolutePath, outputFile.absolutePath, key, salt)
+            Log.d("VaultRepository", "Encryption result: $res")
+            res
         } else {
             val salt = NativeLib.readSaltNative(inputFile.absolutePath)
             if (salt != null) {
                 val key = KeyManager.deriveKey(passphrase, salt)
-                NativeLib.decryptFileNative(inputFile.absolutePath, outputFile.absolutePath, key)
-            } else false
+                Log.d("VaultRepository", "Decrypting: ${inputFile.absolutePath} to ${outputFile.absolutePath}")
+                val res = NativeLib.decryptFileNative(inputFile.absolutePath, outputFile.absolutePath, key)
+                Log.d("VaultRepository", "Decryption result: $res")
+                res
+            } else {
+                Log.e("VaultRepository", "Salt read failed for: ${inputFile.absolutePath}")
+                false
+            }
         }
 
         if (success) {
+            Log.d("VaultRepository", "Processing success, shredding: ${inputFile.absolutePath}")
             shredFile(inputFile)
+            if (isEncrypt && sourceUri != null) {
+                Log.d("VaultRepository", "Deleting original URI: $sourceUri")
+                deleteOriginalUri(sourceUri)
+            }
+        } else {
+            Log.e("VaultRepository", "Processing failed for: ${inputFile.absolutePath}")
         }
         success
+    }
+
+    private fun deleteOriginalUri(uri: Uri) {
+        try {
+            val deletedCount = context.contentResolver.delete(uri, null, null)
+            Log.d("VaultRepository", "Deleted URI count: $deletedCount")
+        } catch (e: Exception) {
+            Log.e("VaultRepository", "Failed to delete URI: $uri", e)
+            if (e is IllegalArgumentException && e.message?.contains("Volume picker") == true) {
+                tryDeleteFromMediaStore(uri)
+            }
+        }
+    }
+
+    private fun tryDeleteFromMediaStore(pickerUri: Uri) {
+        try {
+            var name: String? = null
+            var size: Long = -1
+            context.contentResolver.query(pickerUri, null, null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val nameIdx = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    val sizeIdx = cursor.getColumnIndex(android.provider.OpenableColumns.SIZE)
+                    if (nameIdx != -1) name = cursor.getString(nameIdx)
+                    if (sizeIdx != -1) size = cursor.getLong(sizeIdx)
+                }
+            }
+
+            if (name != null) {
+                Log.d("VaultRepository", "Attempting MediaStore search for: $name ($size bytes)")
+                val selection = MediaStore.MediaColumns.DISPLAY_NAME + "=? AND " + MediaStore.MediaColumns.SIZE + "=?"
+                val selectionArgs = arrayOf(name, size.toString())
+                
+                // Try Images
+                var count = context.contentResolver.delete(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, selection, selectionArgs)
+                if (count > 0) {
+                    Log.d("VaultRepository", "Successfully deleted from MediaStore Images: $name")
+                    return
+                }
+                
+                // Try Video
+                count = context.contentResolver.delete(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, selection, selectionArgs)
+                if (count > 0) {
+                    Log.d("VaultRepository", "Successfully deleted from MediaStore Video: $name")
+                    return
+                }
+                
+                // Try Downloads/Files (API 29+)
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                    count = context.contentResolver.delete(MediaStore.Downloads.EXTERNAL_CONTENT_URI, selection, selectionArgs)
+                    Log.d("VaultRepository", "MediaStore deletion count for $name: $count")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("VaultRepository", "Failed to tryDeleteFromMediaStore", e)
+        }
     }
 
     suspend fun reEncryptVault(oldPass: String, newPass: String): Boolean = withContext(Dispatchers.IO) {
@@ -101,9 +176,10 @@ class VaultRepository(private val context: Context) {
 
             // If we reached here, all files are successfully re-encrypted in backupDir
             processedFiles.forEach { (original, newEnc) ->
-                if (original.delete()) {
+                try {
                     newEnc.copyTo(original, overwrite = true)
-                } else {
+                } catch (e: Exception) {
+                    e.printStackTrace()
                     allSuccess = false
                 }
             }
@@ -188,23 +264,42 @@ class VaultRepository(private val context: Context) {
     }
 
     private fun shredFile(file: File) {
-        if (!file.exists()) return
+        if (!file.exists()) {
+            Log.w("VaultRepository", "Shred failed: file does not exist ${file.absolutePath}")
+            return
+        }
+        val originalPath = file.absolutePath
         try {
             val length = file.length()
-            val raf = RandomAccessFile(file, "rws")
             val random = SecureRandom()
             val buffer = ByteArray(4096)
-            var pos: Long = 0
-            while (pos < length) {
-                random.nextBytes(buffer)
-                val toWrite = if (length - pos < buffer.size) (length - pos).toInt() else buffer.size
-                raf.write(buffer, 0, toWrite)
-                pos += toWrite
+            RandomAccessFile(file, "rws").use { raf ->
+                var pos: Long = 0
+                while (pos < length) {
+                    random.nextBytes(buffer)
+                    val toWrite = if (length - pos < buffer.size) (length - pos).toInt() else buffer.size
+                    raf.write(buffer, 0, toWrite)
+                    pos += toWrite
+                }
+                raf.fd.sync()
             }
-            raf.close()
-            file.delete()
+            if (file.delete()) {
+                Log.d("VaultRepository", "File deleted successfully: $originalPath")
+                // Notify MediaStore that the file is gone
+                MediaScannerConnection.scanFile(context, arrayOf(originalPath), null) { path, uri ->
+                    Log.d("VaultRepository", "Media scan completed for $path, uri: $uri")
+                }
+            } else {
+                Log.e("VaultRepository", "Failed to delete file after shredding: $originalPath. Trying MediaStore...")
+                val deletedCount = context.contentResolver.delete(
+                    MediaStore.Files.getContentUri("external"),
+                    MediaStore.Files.FileColumns.DATA + "=?",
+                    arrayOf(originalPath)
+                )
+                Log.d("VaultRepository", "MediaStore deletion count for $originalPath: $deletedCount")
+            }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("VaultRepository", "Error shredding file: $originalPath", e)
         }
     }
 }
